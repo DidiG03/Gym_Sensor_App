@@ -1,0 +1,114 @@
+import { useEffect, useMemo, useState } from "react";
+import { StyleSheet, View as RNView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { Text, View } from "@/components/Themed";
+import SlideToConfirm from "@/components/SlideToConfirm";
+import WeekCalendar from "@/components/WeekCalendar";
+import Colors from "@/constants/Colors";
+import { useColorScheme } from "@/components/useColorScheme";
+import { getTimeGreeting } from "@/utils/greeting";
+import { supabase } from "@/lib/supabase";
+import { router } from "expo-router";
+
+export default function TabOneScreen() {
+  const colorScheme = useColorScheme() ?? "light";
+  const theme = Colors[colorScheme];
+
+  const [userFirstName, setUserFirstName] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!supabase) return;
+        const { data } = await supabase.auth.getUser();
+        const meta: any = data.user?.user_metadata ?? {};
+        const first =
+          typeof meta.first_name === "string" && meta.first_name.trim()
+            ? meta.first_name.trim()
+            : null;
+        const full =
+          typeof meta.full_name === "string" && meta.full_name.trim()
+            ? meta.full_name.trim()
+            : null;
+        const derived = first ?? (full ? full.split(" ")[0] : null);
+        if (!cancelled) setUserFirstName(derived);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const greetingText = useMemo(() => {
+    const base = getTimeGreeting(now);
+    return userFirstName ? `${base}, ${userFirstName}` : base;
+  }, [now, userFirstName]);
+
+  return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <RNView style={styles.header}>
+        <Text style={[styles.greeting, { color: theme.text }]}>{greetingText}</Text>
+        <Text style={[styles.subGreeting, { color: theme.textSecondary }]}>
+          Ready to move?
+        </Text>
+      </RNView>
+      <WeekCalendar />
+
+      <View style={styles.container}>
+        <Text style={styles.title}>Movu</Text>
+      </View>
+
+      <RNView style={styles.bottom}>
+        <SlideToConfirm label="Slide to start" onComplete={() => router.push("/workout/nfc")} />
+      </RNView>
+    </SafeAreaView>
+  );  
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 0,
+    alignItems: "flex-start",
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  subGreeting: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  bottom: {
+    paddingHorizontal: 20,
+    paddingBottom: 18,
+    alignItems: "center",
+  },
+  separator: {
+    marginVertical: 30,
+    height: 1,
+    width: '80%',
+  },
+});

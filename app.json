@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "movu-app",
+    "slug": "gymsensorapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "movuapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.didig03.movu",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Movu uses Bluetooth to connect to your gym sensor and track your workouts.",
+        "NSBluetoothPeripheralUsageDescription": "Movu uses Bluetooth to connect to your gym sensor and track your workouts.",
+        "NSNFCReaderUsageDescription": "Movu uses NFC to quickly identify your gym sensor."
+      }
+    },
+    "android": {
+      "package": "com.didig03.movu",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "supabaseUrl": "https://oakjonsxvupulmcgmrfp.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ha2pvbnN4dnVwdWxtY2dtcmZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMjg2MDksImV4cCI6MjA4MzkwNDYwOX0.4buNqRp02FiwGbHo9DPQmUfHrUyY9epoli0r2bo1KJI",
+      "eas": {
+        "projectId": "f2fce8b0-85a9-4b04-a534-598f0a9c694c"
+      }
+    },
+    "owner": "didig03s-organization"
+  }
+}
