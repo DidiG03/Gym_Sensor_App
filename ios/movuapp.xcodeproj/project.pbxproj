@@ -8,28 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		301EDA7A10126D069BCFB420 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 15301D77B15E6B5FB56EA0E0 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		8B39D8F92517E04D12BAAEA0 /* libPods-movuapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FEC4DBB62E92440538FDE1A2 /* libPods-movuapp.a */; };
-		A5E78ED76F10C12F1B38662E /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55A5C834FF294B94F5A33010 /* ExpoModulesProvider.swift */; };
+		44ADB11C1147CBBE47E48274 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 58FC24FEA0A58643822CECD2 /* PrivacyInfo.xcprivacy */; };
+		71F4442BBB18704FC31FBE3C /* libPods-movuapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EF50252A4B31BD0576FDF262 /* libPods-movuapp.a */; };
+		84749A889BF99A60F317D117 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD31A5174E787BEB099FDF7 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0AD31A5174E787BEB099FDF7 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-movuapp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* movuapp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = movuapp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = movuapp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = movuapp/Info.plist; sourceTree = "<group>"; };
-		15301D77B15E6B5FB56EA0E0 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = movuapp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		4B24BB64EA3F5EE12CADBF6D /* Pods-movuapp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-movuapp.release.xcconfig"; path = "Target Support Files/Pods-movuapp/Pods-movuapp.release.xcconfig"; sourceTree = "<group>"; };
-		55A5C834FF294B94F5A33010 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-movuapp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		35D9F2BDBB4B16ACFEE044EB /* Pods-movuapp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-movuapp.debug.xcconfig"; path = "Target Support Files/Pods-movuapp/Pods-movuapp.debug.xcconfig"; sourceTree = "<group>"; };
+		58FC24FEA0A58643822CECD2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = movuapp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A2533501C82A77892CA1CCE1 /* Pods-movuapp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-movuapp.release.xcconfig"; path = "Target Support Files/Pods-movuapp/Pods-movuapp.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = movuapp/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		E41C9C9EE337B4F92CCDB834 /* Pods-movuapp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-movuapp.debug.xcconfig"; path = "Target Support Files/Pods-movuapp/Pods-movuapp.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		EF50252A4B31BD0576FDF262 /* libPods-movuapp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-movuapp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = movuapp/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* movuapp-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "movuapp-Bridging-Header.h"; path = "movuapp/movuapp-Bridging-Header.h"; sourceTree = "<group>"; };
-		FEC4DBB62E92440538FDE1A2 /* libPods-movuapp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-movuapp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8B39D8F92517E04D12BAAEA0 /* libPods-movuapp.a in Frameworks */,
+				71F4442BBB18704FC31FBE3C /* libPods-movuapp.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,26 +53,28 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				15301D77B15E6B5FB56EA0E0 /* PrivacyInfo.xcprivacy */,
+				58FC24FEA0A58643822CECD2 /* PrivacyInfo.xcprivacy */,
 			);
 			name = movuapp;
-			sourceTree = "<group>";
-		};
-		1C4149CBB9983BE88E59C82E /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				FF6292DD9061AA3F2CA1E7D7 /* movuapp */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				FEC4DBB62E92440538FDE1A2 /* libPods-movuapp.a */,
+				EF50252A4B31BD0576FDF262 /* libPods-movuapp.a */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		3AFB43F2F3664B1F650F8CE6 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				35D9F2BDBB4B16ACFEE044EB /* Pods-movuapp.debug.xcconfig */,
+				A2533501C82A77892CA1CCE1 /* Pods-movuapp.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -89,8 +91,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				D4BE1B0BB50E4D888CEACD6F /* Pods */,
-				1C4149CBB9983BE88E59C82E /* ExpoModulesProviders */,
+				3AFB43F2F3664B1F650F8CE6 /* Pods */,
+				959821C3507F4EC9106CD10C /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -105,6 +107,22 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		959821C3507F4EC9106CD10C /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				A0C0894BABF28530E2B87A12 /* movuapp */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		A0C0894BABF28530E2B87A12 /* movuapp */ = {
+			isa = PBXGroup;
+			children = (
+				0AD31A5174E787BEB099FDF7 /* ExpoModulesProvider.swift */,
+			);
+			name = movuapp;
+			sourceTree = "<group>";
+		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -112,24 +130,6 @@
 			);
 			name = Supporting;
 			path = movuapp/Supporting;
-			sourceTree = "<group>";
-		};
-		D4BE1B0BB50E4D888CEACD6F /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				E41C9C9EE337B4F92CCDB834 /* Pods-movuapp.debug.xcconfig */,
-				4B24BB64EA3F5EE12CADBF6D /* Pods-movuapp.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		FF6292DD9061AA3F2CA1E7D7 /* movuapp */ = {
-			isa = PBXGroup;
-			children = (
-				55A5C834FF294B94F5A33010 /* ExpoModulesProvider.swift */,
-			);
-			name = movuapp;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "movuapp" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				E4980F92DC5E54970A6009AD /* [Expo] Configure project */,
+				BA0291DB7585F7B3065695A8 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				566999807ABB43137E71A817 /* [CP] Embed Pods Frameworks */,
+				A968DF1BA2F4F3296AD4A3CD /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -198,7 +198,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				301EDA7A10126D069BCFB420 /* PrivacyInfo.xcprivacy in Resources */,
+				44ADB11C1147CBBE47E48274 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -244,28 +244,6 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		566999807ABB43137E71A817 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-movuapp/Pods-movuapp-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-movuapp/Pods-movuapp-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -298,7 +276,29 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-movuapp/Pods-movuapp-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		E4980F92DC5E54970A6009AD /* [Expo] Configure project */ = {
+		A968DF1BA2F4F3296AD4A3CD /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-movuapp/Pods-movuapp-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-movuapp/Pods-movuapp-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		BA0291DB7585F7B3065695A8 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -330,7 +330,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				A5E78ED76F10C12F1B38662E /* ExpoModulesProvider.swift in Sources */,
+				84749A889BF99A60F317D117 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -339,7 +339,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E41C9C9EE337B4F92CCDB834 /* Pods-movuapp.debug.xcconfig */;
+			baseConfigurationReference = 35D9F2BDBB4B16ACFEE044EB /* Pods-movuapp.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -378,7 +378,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 4B24BB64EA3F5EE12CADBF6D /* Pods-movuapp.release.xcconfig */;
+			baseConfigurationReference = A2533501C82A77892CA1CCE1 /* Pods-movuapp.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

@@ -41,7 +41,13 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "Movu uses NFC to identify gym machines."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

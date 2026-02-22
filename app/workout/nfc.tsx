@@ -39,11 +39,12 @@ const MACHINE_ID_MAP: Record<string, string> = {
 
 function parseMachineFromUri(uri: string): string | null {
   try {
-    // movo://machine?id=bench_press_1
+    // movo://machine?id=bench_press_1 (may be embedded in longer text)
     if (!uri || typeof uri !== "string") return null;
-    const u = uri.trim().toLowerCase();
-    if (!u.startsWith("movo://")) return null;
-    const url = new URL(uri.replace(/^movo:\/\//, "https://x/"));
+    const match = uri.match(/movo:\/\/[^?\s]+(\?[^#\s]*)?/i);
+    const toParse = match ? match[0] : uri.trim();
+    if (!toParse.toLowerCase().startsWith("movo://")) return null;
+    const url = new URL(toParse.replace(/^movo:\/\//i, "https://x/"));
     const id = url.searchParams.get("id");
     if (!id) return null;
     const machineName = MACHINE_ID_MAP[id.toLowerCase()] ?? MACHINE_ID_MAP[id.toLowerCase().replace(/_?\d+$/, "")];
@@ -65,9 +66,26 @@ function extractUriFromTag(tag: { ndefMessage?: Array<{ tnf?: number; type?: str
       }
       // TNF_WELL_KNOWN + RTD_URI: decode payload
       if (record.tnf === 0x01 && record.payload && record.payload.length > 0) {
+        const typeStr = Array.isArray(record.type) ? String.fromCharCode(...record.type) : record.type;
         const payload = record.payload instanceof Uint8Array ? record.payload : new Uint8Array(record.payload);
-        const uri = Ndef.uri.decodePayload(payload);
-        if (uri) return uri;
+        if (typeStr === "U" || (Array.isArray(record.type) && record.type[0] === 0x55)) {
+          const uri = Ndef.uri.decodePayload(payload);
+          if (uri) return uri;
+        }
+        // Text record: payload may contain movo://
+        if (typeStr === "T" || (Array.isArray(record.type) && record.type[0] === 0x54)) {
+          try {
+            const text = Ndef.text.decodePayload(payload);
+            if (text && text.includes("movo://")) return text;
+          } catch {
+            // skip
+          }
+        }
+      }
+      // Fallback: try to find movo:// in raw payload as UTF-8 string
+      if (record.payload && record.payload.length > 0) {
+        const raw = String.fromCharCode(...record.payload);
+        if (raw.includes("movo://")) return raw;
       }
     } catch {
       // skip
@@ -81,7 +99,7 @@ export default function NfcScreen() {
   const theme = Colors[colorScheme];
 
   const [scanning, setScanning] = useState(false);
-  const [status, setStatus] = useState<string>("Tap to scan machine");
+  const [status, setStatus] = useState<string>("Checking NFC…");
   const [scannedMachine, setScannedMachine] = useState<string | null>(null);
   const [nfcSupported, setNfcSupported] = useState<boolean | null>(null);
 
@@ -90,10 +108,16 @@ export default function NfcScreen() {
     (async () => {
       try {
         const supported = await NfcManager.isSupported();
-        if (mounted) setNfcSupported(supported);
+        if (mounted) {
+          setNfcSupported(supported);
+          setStatus(supported ? "Tap \"Scan NFC tag\" first, then hold phone near the machine" : "NFC is not supported");
+        }
         if (supported) await NfcManager.start();
-      } catch {
-        if (mounted) setNfcSupported(false);
+      } catch (e: any) {
+        if (mounted) {
+          setNfcSupported(false);
+          setStatus("NFC check failed: " + (e?.message ?? "unknown"));
+        }
       }
     })();
     return () => {
@@ -102,15 +126,22 @@ export default function NfcScreen() {
   }, []);
 
   const scanNfc = useCallback(async () => {
-    if (!nfcSupported) {
+    if (nfcSupported === false) {
       setStatus("NFC is not supported on this device");
       return;
     }
+    if (nfcSupported === null) {
+      setStatus("Still checking NFC support…");
+      return;
+    }
     setScanning(true);
-    setStatus("Hold your phone near the machine tag…");
+    setStatus("Hold your phone near the machine tag now…");
     setScannedMachine(null);
     try {
-      await NfcManager.requestTechnology(NfcTech.Ndef);
+      await NfcManager.requestTechnology(NfcTech.Ndef, {
+        alertMessage: "Hold your iPhone near the machine tag",
+        invalidateAfterFirstRead: true,
+      });
       const tag = await NfcManager.getTag();
       const uri = extractUriFromTag(tag ?? {});
       const machine = uri ? parseMachineFromUri(uri) : null;
@@ -121,15 +152,16 @@ export default function NfcScreen() {
         setStatus(uri ? `Unknown machine: ${uri}` : "No machine URL found on tag");
       }
     } catch (e: any) {
-      if (e?.message?.includes("cancelled") || e?.message?.includes("User")) {
+      const msg = e?.message ?? String(e);
+      if (msg.includes("cancelled") || msg.includes("User") || msg.includes("Session")) {
         setStatus("Scan cancelled");
       } else {
-        setStatus(e?.message ?? "Scan failed");
+        setStatus("Error: " + msg);
       }
     } finally {
       setScanning(false);
       try {
-        NfcManager.cancelTechnologyRequest();
+        await NfcManager.cancelTechnologyRequest();
       } catch {
         // ignore
       }
