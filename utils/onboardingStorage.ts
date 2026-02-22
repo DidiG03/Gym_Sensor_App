@@ -1,16 +1,14 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
+import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { supabase } from "@/lib/supabase";
 
 const KEY = "onboardingCompleted:v1";
 
-// Fallback: if native persistence isn't available in the current binary, we still
-// allow onboarding to complete for this app session (prevents redirect loops).
 let inMemoryCompleted: boolean | null = null;
 
 function getPaths() {
-  // IMPORTANT: compute lazily. In some environments `documentDirectory/cacheDirectory`
-  // can be empty during module initialization, but available later.
   const rawBase = FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? "";
   const base = rawBase ? (rawBase.endsWith("/") ? rawBase : `${rawBase}/`) : "";
   const dir = `${base}movu`;
@@ -71,28 +69,80 @@ async function writeNative(value: string): Promise<void> {
   await FileSystem.writeAsStringAsync(file, value);
 }
 
+/** Read from all backends; any "1" = completed. AsyncStorage is primary (most reliable). */
 async function readLocalCompleted(): Promise<boolean> {
   if (Platform.OS === "web") return (await getWebItem(KEY)) === "1";
-  if (!hasNativePersistence()) return false;
 
-  const raw = await readNative();
-  if (!raw) return false;
+  // 1) AsyncStorage (most reliable across iOS/Android/simulator)
   try {
-    const parsed = JSON.parse(raw) as { completed?: boolean } | null;
-    return !!parsed?.completed;
+    const v = await AsyncStorage.getItem(KEY);
+    if (v === "1") return true;
+    if (v === "0") return false;
   } catch {
-    // Backwards/edge: allow raw "1"/"0"
-    return raw.trim() === "1";
+    // continue
   }
+
+  // 2) SecureStore
+  try {
+    const v = await SecureStore.getItemAsync(KEY);
+    if (v === "1") return true;
+    if (v === "0") return false;
+  } catch {
+    // continue
+  }
+
+  // 3) FileSystem
+  if (hasNativePersistence()) {
+    try {
+      const raw = await readNative();
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as { completed?: boolean } | null;
+          if (parsed?.completed) return true;
+        } catch {
+          if (raw.trim() === "1") return true;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return false;
 }
 
+/** Write to ALL backends so at least one persists. */
 async function writeLocalCompleted(completed: boolean): Promise<void> {
+  const val = completed ? "1" : "0";
   if (Platform.OS === "web") {
-    await setWebItem(KEY, completed ? "1" : "0");
+    await setWebItem(KEY, val);
     return;
   }
-  if (!hasNativePersistence()) return;
-  await writeNative(JSON.stringify({ completed, updatedAt: Date.now() }));
+
+  const writePromises: Promise<void>[] = [];
+
+  // AsyncStorage
+  writePromises.push(
+    (completed ? AsyncStorage.setItem(KEY, val) : AsyncStorage.removeItem(KEY)).catch(() => {})
+  );
+
+  // SecureStore
+  writePromises.push(
+    (completed ? SecureStore.setItemAsync(KEY, val) : SecureStore.deleteItemAsync(KEY)).catch(
+      () => {}
+    )
+  );
+
+  // FileSystem
+  if (hasNativePersistence()) {
+    writePromises.push(
+      ensureDir()
+        .then(() => writeNative(JSON.stringify({ completed, updatedAt: Date.now() })))
+        .catch(() => {})
+    );
+  }
+
+  await Promise.all(writePromises);
 }
 
 async function bestEffortSyncDbCompleted(completed: boolean): Promise<void> {
@@ -114,62 +164,25 @@ async function bestEffortSyncDbCompleted(completed: boolean): Promise<void> {
 }
 
 export async function getOnboardingCompleted(): Promise<boolean> {
-  // First check in-memory cache
   if (inMemoryCompleted !== null) return inMemoryCompleted;
 
-  // Prefer local storage first. If it's completed locally, treat onboarding as done
-  // even if the DB is misconfigured or blocked by RLS (avoids showing onboarding forever).
   const localCompleted = await readLocalCompleted();
-  if (localCompleted) {
-    inMemoryCompleted = true;
-    // Reconcile DB in background (non-blocking)
-    void bestEffortSyncDbCompleted(true);
-    return true;
-  }
-
-  // Check database if user is logged in
-  try {
-    if (supabase) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) {
-        // Check profile in database
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", user.id)
-          .single();
-
-        if (!error && profile?.onboarding_completed) {
-          inMemoryCompleted = true;
-          // Write-through so subsequent boots don't need DB to skip onboarding.
-          await writeLocalCompleted(true);
-          return true;
-        }
-        if (!error && profile && profile.onboarding_completed === false) {
-          inMemoryCompleted = false;
-          return false;
-        }
-      }
-    }
-  } catch {
-    // If database check fails, fall back to local storage
-  }
-
-  // Fall back to local storage (already read above)
   inMemoryCompleted = localCompleted;
+  if (localCompleted) void bestEffortSyncDbCompleted(true);
   return localCompleted;
 }
 
 export async function setOnboardingCompleted(completed = true): Promise<void> {
   inMemoryCompleted = completed;
 
-  // Save to database if user is logged in
+  // ALWAYS write locally first
+  await writeLocalCompleted(completed);
+
   try {
     if (supabase) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.id) {
-        // Update profile in database
-        const { error } = await supabase
+        await supabase
           .from("profiles")
           .upsert(
             {
@@ -179,33 +192,23 @@ export async function setOnboardingCompleted(completed = true): Promise<void> {
             },
             { onConflict: "id" }
           );
-
-        // If successful, we can return early
-        if (!error) {
-          // Also save locally as backup
-          await writeLocalCompleted(completed);
-          return;
-        }
       }
     }
   } catch {
-    // If database save fails, continue to local storage fallback
+    // ignore
   }
-
-  // Fall back to local storage
-  await writeLocalCompleted(completed);
 }
 
 export async function clearOnboardingCompleted(): Promise<void> {
   inMemoryCompleted = false;
 
-  // Clear from database if user is logged in
+  await writeLocalCompleted(false);
+
   try {
     if (supabase) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.id) {
-        // Update profile in database
-        const { error } = await supabase
+        await supabase
           .from("profiles")
           .upsert(
             {
@@ -215,20 +218,9 @@ export async function clearOnboardingCompleted(): Promise<void> {
             },
             { onConflict: "id" }
           );
-
-        // If successful, we can return early
-        if (!error) {
-          // Also clear locally
-          await writeLocalCompleted(false);
-          return;
-        }
       }
     }
   } catch {
-    // If database update fails, continue to local storage fallback
+    // ignore
   }
-
-  // Fall back to local storage
-  await writeLocalCompleted(false);
 }
-

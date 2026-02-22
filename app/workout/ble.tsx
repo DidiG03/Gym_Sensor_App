@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View as RNView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 
 import Colors from "@/constants/Colors";
 import { Text, View } from "@/components/Themed";
@@ -25,8 +25,15 @@ const MACHINES = [
 export default function Ble() {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
+  const { machine: machineParam } = useLocalSearchParams<{ machine?: string }>();
 
   const [selectedMachine, setSelectedMachine] = useState(MACHINES[0]);
+
+  useEffect(() => {
+    if (machineParam && MACHINES.includes(machineParam)) {
+      setSelectedMachine(machineParam);
+    }
+  }, [machineParam]);
   const [sets, setSets] = useState(3);
   const [reps, setReps] = useState(10);
 

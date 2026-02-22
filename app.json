@@ -19,7 +19,11 @@
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "Movu uses Bluetooth to connect to your gym sensor and track your workouts.",
         "NSBluetoothPeripheralUsageDescription": "Movu uses Bluetooth to connect to your gym sensor and track your workouts.",
-        "NSNFCReaderUsageDescription": "Movu uses NFC to quickly identify your gym sensor."
+        "NSNFCReaderUsageDescription": "Movu uses NFC to quickly identify your gym sensor.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "android": {
