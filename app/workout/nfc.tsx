@@ -146,11 +146,10 @@ export default function NfcScreen() {
       const uri = extractUriFromTag(tag ?? {});
       const machine = uri ? parseMachineFromUri(uri) : null;
       if (machine) {
-        setScannedMachine(machine);
-        setStatus(`Scanned: ${machine}`);
-      } else {
-        setStatus(uri ? `Unknown machine: ${uri}` : "No machine URL found on tag");
+        router.push({ pathname: "/workout/ble", params: { machine } });
+        return;
       }
+      setStatus(uri ? `Unknown machine: ${uri}` : "No machine URL found on tag");
     } catch (e: any) {
       const msg = e?.message ?? String(e);
       if (msg.includes("cancelled") || msg.includes("User") || msg.includes("Session")) {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { StyleSheet, View as RNView } from "react-native";
+import { Pressable, StyleSheet, View as RNView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 
 import { Text, View } from "@/components/Themed";
 import SlideToConfirm from "@/components/SlideToConfirm";
@@ -63,6 +64,20 @@ export default function TabOneScreen() {
       </RNView>
       <WeekCalendar />
 
+      <RNView style={[styles.planCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Text style={[styles.planCardTitle, { color: theme.text }]}>TODAY'S ACTIVITIES</Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.planButton,
+            { backgroundColor: theme.border, opacity: pressed ? 0.8 : 1 },
+          ]}
+          onPress={() => router.push("/workout/plan")}
+        >
+          <FontAwesome name="calendar" size={16} color={theme.text} />
+          <Text style={[styles.planButtonText, { color: theme.text }]}>PLAN</Text>
+        </Pressable>
+      </RNView>
+
       <View style={styles.container}>
         <Text style={styles.title}>Movu</Text>
       </View>
@@ -91,6 +106,34 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 13,
     fontWeight: "500",
+  },
+  planCard: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  planCardTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  planButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  planButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    textTransform: "uppercase",
   },
   container: {
     flex: 1,
