@@ -25,7 +25,11 @@ const MACHINES = [
 export default function Ble() {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
-  const { machine: machineParam } = useLocalSearchParams<{ machine?: string }>();
+  const { machine: machineParam, sensorName, sensorMac } = useLocalSearchParams<{
+    machine?: string;
+    sensorName?: string;
+    sensorMac?: string;
+  }>();
 
   const [selectedMachine, setSelectedMachine] = useState(MACHINES[0]);
 
@@ -164,7 +168,18 @@ export default function Ble() {
 
       <RNView style={styles.bottom}>
         <Pressable
-          onPress={() => router.push({ pathname: "/workout/session", params: { sets: sets.toString(), reps: reps.toString(), machine: selectedMachine } })}
+          onPress={() =>
+            router.push({
+              pathname: "/workout/session",
+              params: {
+                sets: sets.toString(),
+                reps: reps.toString(),
+                machine: selectedMachine,
+                sensorName: sensorName ?? "",
+                sensorMac: sensorMac ?? "",
+              },
+            })
+          }
           style={({ pressed }) => [
             styles.primaryBtn,
             {

@@ -156,20 +156,14 @@ export default function OnboardingScreen() {
   const accountValid = !Object.values(errors).some(Boolean);
 
   const finish = async () => {
-    // Ensure we have an auth session so the rest of the app (workouts/history) can function.
-    // If the user skipped account creation, we create an anonymous session.
-    try {
-      if (supabase) {
-        const { data } = await supabase.auth.getUser();
-        if (!data.user) {
-          // Anonymous auth gives us a stable userId for local workout storage.
-          // If your Supabase project doesn't have anonymous auth enabled,
-          // this will fail and we'll still allow onboarding to complete locally.
-          await supabase.auth.signInAnonymously();
-        }
+    // User must have signed up to finish onboarding. No anonymous auth.
+    if (supabase) {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) {
+        // No account - redirect to account step so they must create one
+        setIdx(steps.findIndex((s) => s.id === "account"));
+        return;
       }
-    } catch {
-      // non-fatal
     }
     await setOnboardingCompleted(true);
     router.replace("/(tabs)");
@@ -415,11 +409,7 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      <RNView style={styles.topRow}>
-        <Pressable onPress={finish} hitSlop={12}>
-          <Text style={[styles.skip, { color: theme.textSecondary }]}>Skip</Text>
-        </Pressable>
-      </RNView>
+      <RNView style={styles.topRow} />
 
       <KeyboardAvoidingView
         style={styles.kb}

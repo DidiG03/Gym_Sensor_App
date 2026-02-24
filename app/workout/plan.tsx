@@ -9,6 +9,7 @@ import {
   FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 
 import Colors from "@/constants/Colors";
@@ -53,29 +54,35 @@ export default function Plan() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
+  const ensureUser = useCallback(async (): Promise<string | null> => {
+    if (!supabase) return null;
+    const { data } = await supabase.auth.getUser();
+    return data.user?.id ?? null;
+  }, []);
+
   const loadPlan = useCallback(async () => {
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
     try {
-      const { data } = await supabase.auth.getUser();
-      const uid = data.user?.id ?? null;
+      setLoading(true);
+      const uid = await ensureUser();
       setUserId(uid);
       if (uid) {
         const loaded = await getPlanExercises(uid);
         setExercises(
           loaded.map((e) => ({ id: e.id, name: e.name, sets: e.sets, reps: e.reps }))
         );
+      } else {
+        setExercises([]);
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ensureUser]);
 
-  useEffect(() => {
-    loadPlan();
-  }, [loadPlan]);
+  useFocusEffect(
+    useCallback(() => {
+      loadPlan();
+    }, [loadPlan])
+  );
 
   const addExercise = async (name: string) => {
     const newEx: PlannedExercise = {
@@ -86,19 +93,23 @@ export default function Plan() {
     };
     setExercises((prev) => [...prev, newEx]);
     setAddModalVisible(false);
-    if (userId && supabase) {
-      const saved = await dbAddPlanExercise(userId, {
-        name,
-        sets: 3,
-        reps: 10,
-      });
-      if (saved) {
-        setExercises((prev) =>
-          prev.map((e) => (e.id === newEx.id ? { ...saved } : e))
-        );
-      } else {
-        setExercises((prev) => prev.filter((e) => e.id !== newEx.id));
-      }
+
+    let uid = userId ?? (await ensureUser());
+    setUserId(uid);
+
+    if (!uid) return;
+
+    const saved = await dbAddPlanExercise(uid, {
+      name,
+      sets: 3,
+      reps: 10,
+    });
+    if (saved) {
+      setExercises((prev) =>
+        prev.map((e) => (e.id === newEx.id ? { ...saved } : e))
+      );
+    } else {
+      setExercises((prev) => prev.filter((e) => e.id !== newEx.id));
     }
   };
 

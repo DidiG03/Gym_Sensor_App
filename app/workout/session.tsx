@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LayoutAnimation, Modal, Pressable, StyleSheet, UIManager, View as RNView, Platform } from "react-native";
+import { ActivityIndicator, LayoutAnimation, Modal, Pressable, StyleSheet, UIManager, View as RNView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { BleManager, Device, State } from "react-native-ble-plx";
@@ -11,6 +11,8 @@ import { useColorScheme } from "@/components/useColorScheme";
 import SlideToConfirm from "@/components/SlideToConfirm";
 import { saveWorkout } from "@/utils/workoutStorage";
 import { supabase } from "@/lib/supabase";
+import { useBleConnection } from "@/contexts/BleConnectionContext";
+import { useBleConnectToSensor } from "@/hooks/useBleConnectToSensor";
 
 const SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
 const CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
@@ -22,7 +24,16 @@ const LIVE_CHAR_UUID_LC = LIVE_CHAR_UUID.toLowerCase();
 export default function Session() {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
-  const params = useLocalSearchParams<{ sets?: string; reps?: string; machine?: string }>();
+  const params = useLocalSearchParams<{
+    sets?: string;
+    reps?: string;
+    machine?: string;
+    sensorName?: string;
+    sensorMac?: string;
+  }>();
+
+  const targetSensorName = params.sensorName?.trim() || "IMU-STACK";
+  const targetSensorMac = params.sensorMac?.trim() || undefined;
 
   const sets = useMemo(() => {
     const parsed = params.sets ? parseInt(params.sets, 10) : 3;
@@ -35,6 +46,14 @@ export default function Session() {
   }, [params.reps]);
 
   const machineName = params.machine || "Machine";
+  const { device: preConnectedDevice, manager: preConnectedManager, clearPreConnected } = useBleConnection();
+  const {
+    device: retryDevice,
+    status: retryStatus,
+    error: retryError,
+    connect: retryConnect,
+    manager: retryManager,
+  } = useBleConnectToSensor(targetSensorName, targetSensorMac);
 
   // Enable LayoutAnimation on Android
   if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -49,7 +68,7 @@ export default function Session() {
   const [showRestDrawer, setShowRestDrawer] = useState(false);
   const [restTimer, setRestTimer] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
-  const [sensorStatus, setSensorStatus] = useState<"idle" | "scanning" | "connecting" | "connected" | "error">("idle");
+  const [sensorStatus, setSensorStatus] = useState<"idle" | "need_scan" | "scanning" | "connecting" | "connected" | "error">("idle");
   const [sensorReps, setSensorReps] = useState(0);
   const [bleLastText, setBleLastText] = useState<string | null>(null);
   const [bleNotifyCount, setBleNotifyCount] = useState(0);
@@ -74,6 +93,7 @@ export default function Session() {
   const connectInFlightRef = useRef(false);
   const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const readPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hadDeviceRef = useRef(false);
 
   // Get current user ID
   useEffect(() => {
@@ -134,644 +154,303 @@ export default function Session() {
       return; // Don't scan during rest or when complete
     }
 
-    let cancelled = false;
-    
-    // Only initialize BLE if not already initialized
-    // Note: iOS may show CoreBluetooth warnings about restore identifier - these are harmless
-    if (!bleManagerRef.current) {
-      try {
-        if (__DEV__) {
-          console.log("[BLE] Creating new BleManager instance");
-        }
-        bleManagerRef.current = new BleManager();
-      } catch (error) {
-        if (__DEV__) {
-          console.log("[BLE] Failed to create BleManager:", error);
-        }
-        // If BLE is not available, silently fail and continue with manual mode
-        setSensorStatus("idle");
-        return;
-      }
-    } else {
-      if (__DEV__) {
-        console.log("[BLE] Reusing existing BleManager instance");
-      }
-    }
-    
-    const manager = bleManagerRef.current;
-    if (!manager) {
-      setSensorStatus("idle");
-      return;
-    }
-
-    const run = async () => {
-      try {
-        // Wait for BLE to initialize - state might be "Unknown" initially
-        let state = await manager.state();
-        if (__DEV__) {
-          console.log("[BLE] Initial state:", state);
-        }
-        
-        // If state is Unknown, trigger permission by starting a scan
-        // iOS will show permission prompt when we try to scan
-        if (state === State.Unknown) {
-          if (__DEV__) {
-            console.log("[BLE] State is Unknown - triggering permission by starting scan...");
-          }
-          setSensorStatus("scanning");
-          
-          try {
-            // Start scanning briefly to trigger permission prompt on iOS
-            // Use a simple callback that doesn't interfere with later scans
-            manager.startDeviceScan(null, null, (error, device) => {
-              // Just receiving callback means permission was granted
-              // Don't log every device to avoid spam
-            });
-            
-            // Wait a bit for permission prompt (iOS needs time to show prompt)
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Stop the permission scan and ensure it's fully stopped
-            try {
-              await manager.stopDeviceScan();
-              // Give it a moment to fully stop
-              await new Promise(resolve => setTimeout(resolve, 300));
-            } catch (e) {
-              // Ignore cleanup errors
-            }
-            
-            // Now wait for state to update after permission
-            state = await new Promise<State>((resolve) => {
-              let resolved = false;
-              const timeout = setTimeout(() => {
-                if (!resolved) {
-                  resolved = true;
-                  manager.state().then((s) => {
-                    if (__DEV__) {
-                      console.log("[BLE] Permission timeout, final state:", s);
-                    }
-                    resolve(s);
-                  });
-                }
-              }, 3000);
-              
-              // Subscribe to state changes
-              stateSubscriptionRef.current = manager.onStateChange((newState) => {
-                if (__DEV__) {
-                  console.log("[BLE] State changed to:", newState);
-                }
-                if (!resolved && (newState === State.PoweredOn || newState === State.Unauthorized || newState === State.Unsupported)) {
-                  resolved = true;
-                  clearTimeout(timeout);
-                  if (stateSubscriptionRef.current) {
-                    stateSubscriptionRef.current.remove();
-                    stateSubscriptionRef.current = null;
-                  }
-                  resolve(newState);
-                }
-              });
-            });
-          } catch (scanError) {
-            if (__DEV__) {
-              console.log("[BLE] Scan error while requesting permission:", scanError);
-            }
-            // If scan fails, check state anyway
-            state = await manager.state();
-          }
-        }
-        
-        // Wait for BLE state to become PoweredOn
-        if (state !== State.PoweredOn && state !== State.Unknown) {
-          if (__DEV__) {
-            console.log("[BLE] Current state is", state, "- waiting for PoweredOn...");
-          }
-          setSensorStatus("scanning");
-          
-          // Wait for state to become PoweredOn (with timeout)
-          state = await new Promise<State>((resolve) => {
-            let resolved = false;
-            const timeout = setTimeout(() => {
-              if (!resolved) {
-                resolved = true;
-                if (__DEV__) {
-                  console.log("[BLE] State change timeout after 5s, current state:", state);
-                }
-                resolve(state);
-              }
-            }, 5000);
-            
-            // Subscribe to state changes
-            stateSubscriptionRef.current = manager.onStateChange((newState) => {
-              if (__DEV__) {
-                console.log("[BLE] State changed to:", newState);
-              }
-              if (newState === State.PoweredOn && !resolved) {
-                resolved = true;
-                clearTimeout(timeout);
-                resolve(newState);
-              } else if (newState === State.Unsupported || newState === State.Unauthorized) {
-                if (!resolved) {
-                  resolved = true;
-                  clearTimeout(timeout);
-                  resolve(newState);
-                }
-              }
-            });
-          });
-        }
-        
-        if (cancelled) return;
-
-        // Check if Bluetooth is supported and authorized
-        if (state === State.Unsupported) {
-          if (__DEV__) {
-            console.log("[BLE] Bluetooth is not supported on this device");
-          }
-          setSensorStatus("idle");
-          return;
-        }
-
-        if (state === State.Unauthorized) {
-          if (__DEV__) {
-            console.log("[BLE] Bluetooth permission not granted");
-          }
-          setSensorStatus("idle");
-          return;
-        }
-
-        if (state !== State.PoweredOn) {
-          if (__DEV__) {
-            console.log("[BLE] Bluetooth not powered on, state:", state);
-          }
-          setSensorStatus("idle");
-          return;
-        }
-
-        // Ensure we're not already scanning before starting
-        await manager.stopDeviceScan().catch(() => {});
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        setSensorStatus("scanning");
-        if (__DEV__) {
-          console.log("[BLE] Bluetooth is PoweredOn, starting scan for IMU-STACK device...");
-        }
-
-        // State subscription is already set up above, just make sure it's active for future changes
-        if (!stateSubscriptionRef.current) {
-          stateSubscriptionRef.current = manager.onStateChange((state) => {
-            if (cancelled) return;
-            if (__DEV__) {
-              console.log("[BLE] State changed to:", state);
-            }
-            if (state !== State.PoweredOn) {
-              setSensorStatus("idle");
-              return;
-            }
-          });
-        }
-
-        // Start scanning for device
-        // Try scanning by service UUID first, but also accept all devices in case UUID isn't in scan response
+    // Use pre-connected device from NFC flow (connecting screen)
+    if (preConnectedDevice && preConnectedManager) {
+      hadDeviceRef.current = true;
+      clearPreConnected();
+      bleManagerRef.current = preConnectedManager;
+      deviceRef.current = preConnectedDevice;
+      setBleLastError(null);
+      setSensorStatus("connected");
+      let setupCancelled = false;
+      (async () => {
         try {
-          // Scan all devices (some BLE devices don't advertise service UUID in scan response)
-          scanSubscriptionRef.current = manager.startDeviceScan(null, null, async (error, device) => {
-            if (cancelled) return;
-            if (connectInFlightRef.current || deviceRef.current) return;
+          const services = await preConnectedDevice.services();
+          const targetService =
+            services.find((s) => s.uuid.toLowerCase() === SERVICE_UUID_LC) ?? null;
+          const targetServiceUuid = targetService?.uuid ?? SERVICE_UUID;
+          let repsCharUuid = CHAR_UUID;
+          let liveCharUuid: string | null = null;
+          if (targetService) {
+            const chars = await targetService.characteristics();
+            const repsChar = chars.find((c) => c.uuid.toLowerCase() === CHAR_UUID_LC) ?? null;
+            const liveChar = chars.find((c) => c.uuid.toLowerCase() === LIVE_CHAR_UUID_LC) ?? null;
+            if (repsChar?.uuid) repsCharUuid = repsChar.uuid;
+            if (liveChar?.uuid) liveCharUuid = liveChar.uuid;
+          }
+          if (setupCancelled) return;
+          characteristicSubscriptionRef.current = preConnectedDevice.monitorCharacteristicForService(
+            targetServiceUuid,
+            repsCharUuid,
+            (err, characteristic) => {
+              if (setupCancelled) return;
+              if (err) {
+                setBleLastError(typeof (err as any)?.message === "string" ? (err as any).message : "Characteristic error");
+                if (!setupCancelled) {
+                  setSensorStatus("idle");
+                  preConnectedDevice.cancelConnection().catch(() => {});
+                  deviceRef.current = null;
+                }
+                return;
+              }
+              if (!characteristic?.value) return;
+              try {
+                const text = atob(characteristic.value);
+                setBleLastText(text);
+                setBleNotifyCount((c) => c + 1);
+                setBleLastAtMs(Date.now());
+                let newReps: number | null = null;
+                const matchReps = text.match(/REPS[:\s]*(\d+)/i);
+                if (matchReps) {
+                  newReps = parseInt(matchReps[1], 10);
+                } else {
+                  const matchNumber = text.match(/(\d+)/);
+                  if (matchNumber) newReps = parseInt(matchNumber[1], 10);
+                }
+                if (newReps !== null && !isNaN(newReps)) {
+                  setSensorReps(newReps);
+                  const currentRepsNow = currentRepsRef.current;
+                  const inRestPeriod = showRestDrawerRef.current;
+                  const sensorRepDelta = newReps - lastSensorRepRef.current;
+                  if (sensorRepDelta > 0 && currentRepsNow < reps && !inRestPeriod) {
+                    const repsToAdd = Math.min(sensorRepDelta, reps - currentRepsNow);
+                    for (let i = 0; i < repsToAdd; i++) incrementRep();
+                    lastSensorRepRef.current = newReps;
+                  } else if (newReps > 0 && lastSensorRepRef.current === 0 && currentRepsNow < reps && !inRestPeriod) {
+                    incrementRep();
+                    lastSensorRepRef.current = newReps;
+                  }
+                }
+              } catch {
+                setBleLastError("Parse error decoding BLE value");
+              }
+            }
+          );
+          if (liveCharUuid) {
+            preConnectedDevice.monitorCharacteristicForService(
+              targetServiceUuid,
+              liveCharUuid,
+              (err, characteristic) => {
+                if (setupCancelled || err || !characteristic?.value) return;
+                try {
+                  const text = atob(characteristic.value);
+                  setBleLiveLastText(text);
+                  setBleLiveCount((c) => c + 1);
+                  setBleLiveLastAtMs(Date.now());
+                } catch {}
+              }
+            );
+          }
+          try {
+            const initial = await preConnectedDevice.readCharacteristicForService(targetServiceUuid, repsCharUuid);
+            if (initial?.value) {
+              setBleLastText(atob(initial.value));
+              setBleLastAtMs(Date.now());
+            }
+          } catch {}
+          readPollIntervalRef.current = setInterval(async () => {
+            try {
+              if (setupCancelled || !deviceRef.current) return;
+              const c = await preConnectedDevice.readCharacteristicForService(targetServiceUuid, repsCharUuid);
+              if (!c?.value) return;
+              const t = atob(c.value);
+              setBleLastText(t);
+              setBleLastAtMs(Date.now());
+              const matchReps = t.match(/REPS[:\s]*(\d+)/i);
+              const matchNumber = t.match(/(\d+)/);
+              const parsed =
+                matchReps?.[1] ? parseInt(matchReps[1], 10) : matchNumber?.[1] ? parseInt(matchNumber[1], 10) : NaN;
+              if (!Number.isFinite(parsed)) return;
+              setSensorReps(parsed);
+              const currentRepsNow = currentRepsRef.current;
+              const inRestPeriod = showRestDrawerRef.current;
+              const delta = parsed - lastSensorRepRef.current;
+              if (delta > 0 && currentRepsNow < reps && !inRestPeriod) {
+                const repsToAdd = Math.min(delta, reps - currentRepsNow);
+                for (let i = 0; i < repsToAdd; i++) incrementRep();
+                lastSensorRepRef.current = parsed;
+              } else if (parsed > 0 && lastSensorRepRef.current === 0 && currentRepsNow < reps && !inRestPeriod) {
+                incrementRep();
+                lastSensorRepRef.current = parsed;
+              }
+            } catch {}
+          }, 750);
+        } catch (e: any) {
+          setSensorStatus("idle");
+          setBleLastError(e?.message ?? "Setup failed");
+          preConnectedDevice.cancelConnection().catch(() => {});
+          deviceRef.current = null;
+        }
+      })();
+      return () => {
+        setupCancelled = true;
+        if (readPollIntervalRef.current) {
+          clearInterval(readPollIntervalRef.current);
+          readPollIntervalRef.current = null;
+        }
+        try {
+          characteristicSubscriptionRef.current?.remove?.();
+        } catch {}
+        characteristicSubscriptionRef.current = null;
+        if (deviceRef.current) {
+          deviceRef.current.cancelConnection().catch(() => {});
+          deviceRef.current = null;
+        }
+      };
+    }
 
-            if (error) {
-              if (__DEV__) {
-                console.log("[BLE] Scan error:", error);
-              }
-              // Non-critical errors, just stop scanning
-              if (!cancelled && scanSubscriptionRef.current) {
-                manager.stopDeviceScan().catch(() => {});
-                setSensorStatus("idle");
-              }
+    // No pre-connected device: require NFC scan or show retry if we had one and lost it
+    setSensorStatus(hadDeviceRef.current ? "error" : "need_scan");
+    return;
+  }, [
+    showRestDrawer,
+    isAllSetsComplete,
+    preConnectedDevice,
+    preConnectedManager,
+    clearPreConnected,
+    reps,
+  ]);
+
+  // Retry flow: when sensorStatus is "error" and retry succeeds (retryDevice set), set up monitoring
+  useEffect(() => {
+    if (sensorStatus !== "error") return;
+    if (!retryDevice || !retryManager) return;
+    hadDeviceRef.current = true;
+    deviceRef.current = retryDevice;
+    bleManagerRef.current = retryManager;
+    setBleLastError(null);
+    setSensorStatus("connected");
+    let setupCancelled = false;
+    (async () => {
+      try {
+        const services = await retryDevice.services();
+        const targetService =
+          services.find((s) => s.uuid.toLowerCase() === SERVICE_UUID_LC) ?? null;
+        const targetServiceUuid = targetService?.uuid ?? SERVICE_UUID;
+        let repsCharUuid = CHAR_UUID;
+        let liveCharUuid: string | null = null;
+        if (targetService) {
+          const chars = await targetService.characteristics();
+          const repsChar = chars.find((c) => c.uuid.toLowerCase() === CHAR_UUID_LC) ?? null;
+          const liveChar = chars.find((c) => c.uuid.toLowerCase() === LIVE_CHAR_UUID_LC) ?? null;
+          if (repsChar?.uuid) repsCharUuid = repsChar.uuid;
+          if (liveChar?.uuid) liveCharUuid = liveChar.uuid;
+        }
+        if (setupCancelled) return;
+        characteristicSubscriptionRef.current = retryDevice.monitorCharacteristicForService(
+          targetServiceUuid,
+          repsCharUuid,
+          (err, characteristic) => {
+            if (setupCancelled) return;
+            if (err) {
+              setBleLastError(typeof (err as any)?.message === "string" ? (err as any).message : "Characteristic error");
+              setSensorStatus("error");
+              retryDevice.cancelConnection().catch(() => {});
+              deviceRef.current = null;
               return;
             }
-
-            // Log all devices found (even with null names) for debugging
-            if (__DEV__) {
-              const deviceName = device?.name || device?.localName || "(no name)";
-              const serviceUUIDs = device?.serviceUUIDs || [];
-              console.log("[BLE] Found device:", deviceName, device?.id, serviceUUIDs.length > 0 ? `services: ${serviceUUIDs.join(", ")}` : "no services in scan");
-            }
-
-            // Check both name and localName for device matching
-            const deviceName = device?.name || device?.localName || "";
-            
-            // Try to match by name first
-            if (device && deviceName === "IMU-STACK") {
-                connectInFlightRef.current = true;
-                if (__DEV__) {
-                  console.log("[BLE] ✅ IMU-STACK device found by name!", {
-                    id: device.id,
-                    name: deviceName,
-                    serviceUUIDs: device.serviceUUIDs
-                  });
-                }
-                if (scanTimeoutRef.current) {
-                  clearTimeout(scanTimeoutRef.current);
-                  scanTimeoutRef.current = null;
-                }
-                manager.stopDeviceScan().catch(() => {});
-                try {
-                  scanSubscriptionRef.current?.remove?.();
-                } catch {
-                  // ignore
-                }
-                scanSubscriptionRef.current = null;
-                if (cancelled) return;
-
-                setSensorStatus("connecting");
-
-                try {
-                  if (__DEV__) {
-                    console.log("[BLE] Attempting to connect...");
-                  }
-                  const connectedDevice = await device.connect();
-                  await connectedDevice.discoverAllServicesAndCharacteristics();
-                  
-                  // Verify it has the correct service after connection
-                  const services = await connectedDevice.services();
-                  const hasCorrectService = services.some(s => s.uuid.toLowerCase() === SERVICE_UUID_LC);
-                  
-                  if (!hasCorrectService) {
-                    if (__DEV__) {
-                      console.log("[BLE] ⚠️ Device doesn't have expected service, disconnecting...");
-                    }
-                    await connectedDevice.cancelConnection();
-                    connectInFlightRef.current = false;
-                    return;
-                  }
-                  
-                  deviceRef.current = connectedDevice;
-
-                  if (cancelled) {
-                    await connectedDevice.cancelConnection().catch(() => {});
-                    return;
-                  }
-
-                  // List all services and characteristics for debugging
-                  if (__DEV__) {
-                    const services = await connectedDevice.services();
-                    console.log("[BLE] Services found:", services.length);
-                    for (const service of services) {
-                      console.log(`[BLE] Service: ${service.uuid}`);
-                      const characteristics = await service.characteristics();
-                      console.log(`[BLE] Characteristics: ${characteristics.length}`);
-                      for (const char of characteristics) {
-                        console.log(`[BLE] Characteristic: ${char.uuid}`, {
-                          isNotifiable: char.isNotifiable,
-                          isReadable: char.isReadable,
-                          isWritableWithResponse: char.isWritableWithResponse,
-                        });
-                      }
-                    }
-                  }
-
-                  setBleLastError(null);
-                  setSensorStatus("connected");
-                  if (__DEV__) {
-                    console.log(`[BLE] Starting monitor on service ${SERVICE_UUID}, char ${CHAR_UUID}`);
-                  }
-
-                  // Find the exact characteristic UUIDs to subscribe to (REPS + optional LIVE)
-                  const targetService =
-                    services.find((s) => s.uuid.toLowerCase() === SERVICE_UUID_LC) ?? null;
-                  const targetServiceUuid = targetService?.uuid ?? SERVICE_UUID;
-                  let repsCharUuid = CHAR_UUID;
-                  let liveCharUuid: string | null = null;
-                  try {
-                    if (targetService) {
-                      const chars = await targetService.characteristics();
-                      const repsChar = chars.find((c) => c.uuid.toLowerCase() === CHAR_UUID_LC) ?? null;
-                      const liveChar = chars.find((c) => c.uuid.toLowerCase() === LIVE_CHAR_UUID_LC) ?? null;
-
-                      if (repsChar?.uuid) repsCharUuid = repsChar.uuid;
-                      if (liveChar?.uuid) liveCharUuid = liveChar.uuid;
-
-                      if (__DEV__) {
-                        console.log("[BLE] Using characteristics:", {
-                          service: targetServiceUuid,
-                          repsChar: repsCharUuid,
-                          liveChar: liveCharUuid,
-                          repsNotifiable: repsChar?.isNotifiable,
-                          repsReadable: repsChar?.isReadable,
-                          liveNotifiable: liveChar?.isNotifiable,
-                          liveReadable: liveChar?.isReadable,
-                        });
-                      }
-                    }
-                  } catch (e) {
-                    if (__DEV__) console.log("[BLE] Failed selecting characteristic:", e);
-                  }
-
-                  // Monitor REPS characteristic
-                  characteristicSubscriptionRef.current = connectedDevice.monitorCharacteristicForService(
-                    targetServiceUuid,
-                    repsCharUuid,
-                    (err, characteristic) => {
-                      if (cancelled) return;
-
-                      if (err) {
-                        if (__DEV__) {
-                          console.log("[BLE] Characteristic error:", err);
-                        }
-                        setBleLastError(typeof (err as any)?.message === "string" ? (err as any).message : "Characteristic error");
-                        // Error monitoring, disconnect and reset
-                        if (!cancelled) {
-                          setSensorStatus("idle");
-                          connectedDevice.cancelConnection().catch(() => {});
-                          deviceRef.current = null;
-                        }
-                        return;
-                      }
-
-                      if (__DEV__ && characteristic?.value) {
-                        console.log("[BLE] Characteristic update received:", characteristic.value);
-                      }
-
-                      if (!characteristic?.value) {
-                        if (__DEV__) {
-                          console.log("[BLE] Characteristic value is null/empty");
-                        }
-                        return;
-                      }
-
-                      try {
-                        // Decode the characteristic value
-                        const text = atob(characteristic.value); // e.g. "REPS:12\n" or just "12"
-                        setBleLastText(text);
-                        setBleNotifyCount((c) => c + 1);
-                        setBleLastAtMs(Date.now());
-                        
-                        if (__DEV__) {
-                          console.log("[BLE] Decoded text:", text);
-                        }
-                        
-                        // Try multiple formats the sensor might use
-                        let newReps: number | null = null;
-                        
-                        // Format 1: "REPS:12" or "REPS:12\n"
-                        const matchReps = text.match(/REPS[:\s]*(\d+)/i);
-                        if (matchReps) {
-                          newReps = parseInt(matchReps[1], 10);
-                          if (__DEV__) {
-                            console.log("[BLE] Matched REPS format, value:", newReps);
-                          }
-                        } else {
-                          // Format 2: Just a number "12" or "12\n"
-                          const matchNumber = text.match(/(\d+)/);
-                          if (matchNumber) {
-                            newReps = parseInt(matchNumber[1], 10);
-                            if (__DEV__) {
-                              console.log("[BLE] Matched number format, value:", newReps);
-                            }
-                          }
-                        }
-
-                        if (newReps !== null && !isNaN(newReps)) {
-                          setSensorReps(newReps);
-
-                          // Check if this is a new rep (increment from sensor value)
-                          // Use refs to get latest values in callback
-                          const currentRepsNow = currentRepsRef.current;
-                          const inRestPeriod = showRestDrawerRef.current;
-                          
-                          // If sensor sends cumulative count, we should increment when it increases
-                          // If sensor sends per-rep count (1, 2, 3...), we should increment each time
-                          const sensorRepDelta = newReps - lastSensorRepRef.current;
-                          
-                          if (__DEV__) {
-                            console.log("[BLE] Rep processing:", {
-                              newReps,
-                              lastRep: lastSensorRepRef.current,
-                              delta: sensorRepDelta,
-                              currentReps: currentRepsNow,
-                              targetReps: reps,
-                              inRestPeriod,
-                            });
-                          }
-                          
-                          // Increment rep if:
-                          // 1. Sensor value increased (delta > 0)
-                          // 2. We haven't exceeded target reps for current set
-                          // 3. We're not in rest period
-                          if (sensorRepDelta > 0 && currentRepsNow < reps && !inRestPeriod) {
-                            // If sensor sends cumulative count, increment based on delta
-                            // If sensor sends each rep individually (always 1), delta will be 1
-                            const repsToAdd = Math.min(sensorRepDelta, reps - currentRepsNow);
-                            if (__DEV__) {
-                              console.log("[BLE] Incrementing reps:", repsToAdd);
-                            }
-                            for (let i = 0; i < repsToAdd; i++) {
-                              incrementRep();
-                            }
-                            lastSensorRepRef.current = newReps;
-                          } else if (newReps > 0 && lastSensorRepRef.current === 0 && currentRepsNow < reps && !inRestPeriod) {
-                            // First rep detection - increment once
-                            if (__DEV__) {
-                              console.log("[BLE] First rep detected, incrementing");
-                            }
-                            incrementRep();
-                            lastSensorRepRef.current = newReps;
-                          }
-                        } else {
-                          if (__DEV__) {
-                            console.log("[BLE] Could not parse rep value from text:", text);
-                          }
-                        }
-                      } catch (parseError) {
-                        // Log parsing errors for debugging
-                        if (__DEV__) {
-                          console.log("[BLE] Parse error:", parseError, "Raw value:", characteristic.value);
-                        }
-                        setBleLastError("Parse error decoding BLE value");
-                      }
-                    }
-                  );
-                  if (__DEV__) {
-                    console.log("[BLE] Monitor subscription started");
-                  }
-
-                  // Monitor LIVE characteristic (if present). This is optional, but useful for confirming a continuous stream.
-                  if (liveCharUuid) {
-                    try {
-                      connectedDevice.monitorCharacteristicForService(
-                        targetServiceUuid,
-                        liveCharUuid,
-                        (err, characteristic) => {
-                          if (cancelled) return;
-                          if (err) {
-                            if (__DEV__) console.log("[BLE] LIVE characteristic error:", err);
-                            return;
-                          }
-                          if (!characteristic?.value) return;
-                          try {
-                            const text = atob(characteristic.value);
-                            setBleLiveLastText(text);
-                            setBleLiveCount((c) => c + 1);
-                            setBleLiveLastAtMs(Date.now());
-                          } catch {
-                            // ignore
-                          }
-                        }
-                      );
-                      if (__DEV__) console.log("[BLE] LIVE monitor subscription started");
-                    } catch (e) {
-                      if (__DEV__) console.log("[BLE] LIVE monitor failed to start:", e);
-                    }
-                  }
-
-                  // One-time read (helps confirm we can access the characteristic even if notify is quiet)
-                  try {
-                    const initial = await connectedDevice.readCharacteristicForService(
-                      targetServiceUuid,
-                      repsCharUuid
-                    );
-                    if (initial?.value) {
-                      const t = atob(initial.value);
-                      setBleLastText(t);
-                      setBleLastAtMs(Date.now());
-                      if (__DEV__) console.log("[BLE] Initial read decoded:", t);
-                    }
-                  } catch (e: any) {
-                    if (__DEV__) console.log("[BLE] Initial read failed:", e);
-                  }
-
-                  // Fallback: if notifications never arrive, poll-read periodically (dev safety net)
-                  if (readPollIntervalRef.current) {
-                    clearInterval(readPollIntervalRef.current);
-                    readPollIntervalRef.current = null;
-                  }
-                  readPollIntervalRef.current = setInterval(async () => {
-                    try {
-                      if (cancelled) return;
-                      if (!deviceRef.current) return;
-                      const c = await deviceRef.current.readCharacteristicForService(
-                        targetServiceUuid,
-                        repsCharUuid
-                      );
-                      if (!c?.value) return;
-                      const t = atob(c.value);
-                      setBleLastText(t);
-                      setBleLastAtMs(Date.now());
-                      // Do NOT increment notify count here (separate from notify)
-                      const matchReps = t.match(/REPS[:\s]*(\d+)/i);
-                      const matchNumber = t.match(/(\d+)/);
-                      const parsed =
-                        matchReps?.[1] ? parseInt(matchReps[1], 10) : matchNumber?.[1] ? parseInt(matchNumber[1], 10) : NaN;
-                      if (!Number.isFinite(parsed)) return;
-                      setSensorReps(parsed);
-                      const currentRepsNow = currentRepsRef.current;
-                      const inRestPeriod = showRestDrawerRef.current;
-                      const delta = parsed - lastSensorRepRef.current;
-                      if (delta > 0 && currentRepsNow < reps && !inRestPeriod) {
-                        const repsToAdd = Math.min(delta, reps - currentRepsNow);
-                        for (let i = 0; i < repsToAdd; i++) incrementRep();
-                        lastSensorRepRef.current = parsed;
-                      } else if (parsed > 0 && lastSensorRepRef.current === 0 && currentRepsNow < reps && !inRestPeriod) {
-                        incrementRep();
-                        lastSensorRepRef.current = parsed;
-                      }
-                    } catch {
-                      // ignore
-                    }
-                  }, 750);
-                } catch (connectError: any) {
-                  if (__DEV__) {
-                    console.log("[BLE] Connection error:", connectError);
-                  }
-                  setBleLastError(typeof connectError?.message === "string" ? connectError.message : "Connection error");
-                  if (!cancelled) {
-                    setSensorStatus("idle");
-                  }
-                  connectInFlightRef.current = false;
+            if (!characteristic?.value) return;
+            try {
+              const text = atob(characteristic.value);
+              setBleLastText(text);
+              setBleNotifyCount((c) => c + 1);
+              setBleLastAtMs(Date.now());
+              let newReps: number | null = null;
+              const matchReps = text.match(/REPS[:\s]*(\d+)/i);
+              if (matchReps) newReps = parseInt(matchReps[1], 10);
+              else {
+                const matchNumber = text.match(/(\d+)/);
+                if (matchNumber) newReps = parseInt(matchNumber[1], 10);
               }
-            }
-          });
-
-          // Stop scan after 30 seconds if no device found
-          scanTimeoutRef.current = setTimeout(() => {
-            if (!cancelled) {
-              manager.stopDeviceScan().catch(() => {});
-              if (__DEV__) {
-                console.log("[BLE] ⚠️ Scan timeout - IMU-STACK device not found after 30s.");
+              if (newReps !== null && !isNaN(newReps)) {
+                setSensorReps(newReps);
+                const currentRepsNow = currentRepsRef.current;
+                const inRestPeriod = showRestDrawerRef.current;
+                const sensorRepDelta = newReps - lastSensorRepRef.current;
+                if (sensorRepDelta > 0 && currentRepsNow < reps && !inRestPeriod) {
+                  const repsToAdd = Math.min(sensorRepDelta, reps - currentRepsNow);
+                  for (let i = 0; i < repsToAdd; i++) incrementRep();
+                  lastSensorRepRef.current = newReps;
+                } else if (newReps > 0 && lastSensorRepRef.current === 0 && currentRepsNow < reps && !inRestPeriod) {
+                  incrementRep();
+                  lastSensorRepRef.current = newReps;
+                }
               }
-              setSensorStatus((prev) => (prev === "scanning" ? "idle" : prev));
+            } catch {
+              setBleLastError("Parse error decoding BLE value");
             }
-          }, 30000);
-        } catch (scanError) {
-          if (__DEV__) {
-            console.log("[BLE] Failed to start scan:", scanError);
           }
-          if (!cancelled) {
-            setSensorStatus("idle");
+        );
+        if (liveCharUuid) {
+          retryDevice.monitorCharacteristicForService(
+            targetServiceUuid,
+            liveCharUuid,
+            (err, characteristic) => {
+              if (setupCancelled || err || !characteristic?.value) return;
+              try {
+                const text = atob(characteristic.value);
+                setBleLiveLastText(text);
+                setBleLiveCount((c) => c + 1);
+                setBleLiveLastAtMs(Date.now());
+              } catch {}
+            }
+          );
+        }
+        try {
+          const initial = await retryDevice.readCharacteristicForService(targetServiceUuid, repsCharUuid);
+          if (initial?.value) {
+            setBleLastText(atob(initial.value));
+            setBleLastAtMs(Date.now());
           }
-        }
-      } catch (error: any) {
-        if (__DEV__) {
-          console.log("[BLE] Error in run:", error);
-        }
-        if (!cancelled) {
-          setSensorStatus("idle");
-        }
+        } catch {}
+        readPollIntervalRef.current = setInterval(async () => {
+          try {
+            if (setupCancelled || !deviceRef.current) return;
+            const c = await retryDevice.readCharacteristicForService(targetServiceUuid, repsCharUuid);
+            if (!c?.value) return;
+            const t = atob(c.value);
+            setBleLastText(t);
+            setBleLastAtMs(Date.now());
+            const matchReps = t.match(/REPS[:\s]*(\d+)/i);
+            const matchNumber = t.match(/(\d+)/);
+            const parsed =
+              matchReps?.[1] ? parseInt(matchReps[1], 10) : matchNumber?.[1] ? parseInt(matchNumber[1], 10) : NaN;
+            if (!Number.isFinite(parsed)) return;
+            setSensorReps(parsed);
+            const currentRepsNow = currentRepsRef.current;
+            const inRestPeriod = showRestDrawerRef.current;
+            const delta = parsed - lastSensorRepRef.current;
+            if (delta > 0 && currentRepsNow < reps && !inRestPeriod) {
+              const repsToAdd = Math.min(delta, reps - currentRepsNow);
+              for (let i = 0; i < repsToAdd; i++) incrementRep();
+              lastSensorRepRef.current = parsed;
+            } else if (parsed > 0 && lastSensorRepRef.current === 0 && currentRepsNow < reps && !inRestPeriod) {
+              incrementRep();
+              lastSensorRepRef.current = parsed;
+            }
+          } catch {}
+        }, 750);
+      } catch (e: any) {
+        setSensorStatus("error");
+        setBleLastError(e?.message ?? "Setup failed");
+        retryDevice.cancelConnection().catch(() => {});
+        deviceRef.current = null;
       }
-    };
-
-    run();
-
+    })();
     return () => {
-      cancelled = true;
-      lastSensorRepRef.current = 0;
-      connectInFlightRef.current = false;
-      if (scanTimeoutRef.current) {
-        clearTimeout(scanTimeoutRef.current);
-        scanTimeoutRef.current = null;
-      }
+      setupCancelled = true;
       if (readPollIntervalRef.current) {
         clearInterval(readPollIntervalRef.current);
         readPollIntervalRef.current = null;
       }
-
-      // Clean up subscriptions
       try {
-        if (characteristicSubscriptionRef.current) {
-          characteristicSubscriptionRef.current.remove?.();
-          characteristicSubscriptionRef.current = null;
-        }
-        if (scanSubscriptionRef.current) {
-          scanSubscriptionRef.current.remove?.();
-          scanSubscriptionRef.current = null;
-        }
-        if (stateSubscriptionRef.current) {
-          stateSubscriptionRef.current.remove?.();
-          stateSubscriptionRef.current = null;
-        }
-      } catch {
-        // Ignore cleanup errors
-      }
-
-      // Disconnect and cleanup
-      if (deviceRef.current) {
-        deviceRef.current.cancelConnection().catch(() => {});
-        deviceRef.current = null;
-      }
-
-      if (bleManagerRef.current) {
-        try {
-          bleManagerRef.current.stopDeviceScan().catch(() => {});
-        } catch {
-          // Ignore stop scan errors
-        }
-        // Don't destroy the manager, just stop scanning
-        // The manager will be reused or cleaned up on unmount
-      }
+        characteristicSubscriptionRef.current?.remove?.();
+      } catch {}
+      characteristicSubscriptionRef.current = null;
     };
-  }, [showRestDrawer, isAllSetsComplete]);
+  }, [sensorStatus, retryDevice, retryManager, reps]);
 
-  // Cleanup BLE manager on unmount
+  // Cleanup BLE manager on unmount - MOVED UP (old fallback scan removed)
   useEffect(() => {
     return () => {
       if (bleManagerRef.current) {
@@ -902,6 +581,59 @@ export default function Session() {
     currentRepsRef.current = currentReps;
   }, [currentReps]);
 
+  if (sensorStatus === "need_scan") {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+        <RNView style={styles.retryContainer}>
+          <Text style={[styles.retryTitle, { color: theme.text }]}>Scan NFC first</Text>
+          <Text style={[styles.retrySubtitle, { color: theme.textSecondary }]}>
+            Tap the NFC tag on the machine to connect to its sensor, then start your session.
+          </Text>
+          <Pressable
+            onPress={() => router.replace("/workout/nfc")}
+            style={({ pressed }) => [
+              styles.retryButton,
+              { backgroundColor: theme.primary, opacity: pressed ? 0.85 : 1 },
+            ]}
+          >
+            <Text style={[styles.retryButtonText, { color: theme.background }]}>Scan NFC</Text>
+          </Pressable>
+        </RNView>
+      </SafeAreaView>
+    );
+  }
+
+  if (sensorStatus === "error") {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+        <RNView style={styles.retryContainer}>
+          <Text style={[styles.retryTitle, { color: theme.text }]}>Connection lost</Text>
+          <Text style={[styles.retrySubtitle, { color: theme.textSecondary }]}>
+            {bleLastError || retryError || "The sensor disconnected. Make sure it's on and nearby."}
+          </Text>
+          {(retryStatus === "scanning" || retryStatus === "connecting") ? (
+            <RNView style={styles.retryButton}>
+              <ActivityIndicator size="small" color={theme.background} />
+              <Text style={[styles.retryButtonText, { color: theme.background }]}>
+                {retryStatus === "scanning" ? "Searching…" : "Connecting…"}
+              </Text>
+            </RNView>
+          ) : (
+            <Pressable
+              onPress={() => retryConnect()}
+              style={({ pressed }) => [
+                styles.retryButton,
+                { backgroundColor: theme.primary, opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
+              <Text style={[styles.retryButtonText, { color: theme.background }]}>Retry</Text>
+            </Pressable>
+          )}
+        </RNView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <RNView style={styles.top}>
@@ -975,7 +707,7 @@ export default function Session() {
         )}
         {sensorStatus === "idle" && (
           <Text style={[styles.sensorStatus, { color: theme.textSecondary }]}>
-            BLE: Ready (not scanning)
+            Resting
           </Text>
         )}
         {sensorStatus === "error" && (
@@ -1084,6 +816,37 @@ export default function Session() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  retryContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+  },
+  retryTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  retrySubtitle: {
+    fontSize: 15,
+    textAlign: "center",
+    maxWidth: 320,
+    lineHeight: 22,
+  },
+  retryButton: {
+    marginTop: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
   top: {
     paddingHorizontal: 20,
     paddingTop: 4,

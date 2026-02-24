@@ -3672,7 +3672,7 @@ Node found at: /opt/homebrew/Cellar/node/24.10.0/bin/node
 
 note: Run script build phase 'Bundle React Native code and images' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'movuapp' from project 'movuapp')
 note: Run script build phase '[Expo] Configure project' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'movuapp' from project 'movuapp')
-PhaseScriptExecution [Expo]\ Configure\ project /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Intermediates.noindex/movuapp.build/Debug-iphoneos/movuapp.build/Script-80889DF57E6DBF9799D8B3AF.sh (in target 'movuapp' from project 'movuapp')
+PhaseScriptExecution [Expo]\ Configure\ project /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Intermediates.noindex/movuapp.build/Debug-iphoneos/movuapp.build/Script-D035D1D667DD074BB56E1615.sh (in target 'movuapp' from project 'movuapp')
     cd /Users/sefridkapllani/Documents/GitHub/Gym_Sensor_App/ios
     export ACTION\=build
     export AD_HOC_CODE_SIGNING_ALLOWED\=NO
@@ -4278,7 +4278,7 @@ PhaseScriptExecution [Expo]\ Configure\ project /Users/sefridkapllani/Library/De
     export __IS_NOT_SIMULATOR_simulator\=NO
     export arch\=undefined_arch
     export variant\=normal
-    /bin/sh -c /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Intermediates.noindex/movuapp.build/Debug-iphoneos/movuapp.build/Script-80889DF57E6DBF9799D8B3AF.sh
+    /bin/sh -c /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Intermediates.noindex/movuapp.build/Debug-iphoneos/movuapp.build/Script-D035D1D667DD074BB56E1615.sh
 Node found at: /opt/homebrew/Cellar/node/24.10.0/bin/node
 
 SwiftDriver movuapp normal arm64 com.apple.xcode.tools.swift.compiler (in target 'movuapp' from project 'movuapp')
@@ -4293,14 +4293,15 @@ PrecompileSwiftBridgingHeader normal arm64 (in target 'movuapp' from project 'mo
 
 SwiftDriverJobDiscovery normal arm64 Compiling bridging header (in target 'movuapp' from project 'movuapp')
 
-SwiftCompile normal arm64 Compiling\ ExpoModulesProvider.swift /Users/sefridkapllani/Documents/GitHub/Gym_Sensor_App/ios/Pods/Target\ Support\ Files/Pods-movuapp/ExpoModulesProvider.swift (in target 'movuapp' from project 'movuapp')
+SwiftEmitModule normal arm64 Emitting\ module\ for\ movuapp (in target 'movuapp' from project 'movuapp')
 
-SwiftCompile normal arm64 /Users/sefridkapllani/Documents/GitHub/Gym_Sensor_App/ios/Pods/Target\ Support\ Files/Pods-movuapp/ExpoModulesProvider.swift (in target 'movuapp' from project 'movuapp')
+EmitSwiftModule normal arm64 (in target 'movuapp' from project 'movuapp')
     cd /Users/sefridkapllani/Documents/GitHub/Gym_Sensor_App/ios
     
 
-SwiftEmitModule normal arm64 Emitting\ module\ for\ movuapp (in target 'movuapp' from project 'movuapp')
-EmitSwiftModule normal arm64 (in target 'movuapp' from project 'movuapp')
+SwiftCompile normal arm64 Compiling\ ExpoModulesProvider.swift /Users/sefridkapllani/Documents/GitHub/Gym_Sensor_App/ios/Pods/Target\ Support\ Files/Pods-movuapp/ExpoModulesProvider.swift (in target 'movuapp' from project 'movuapp')
+
+SwiftCompile normal arm64 /Users/sefridkapllani/Documents/GitHub/Gym_Sensor_App/ios/Pods/Target\ Support\ Files/Pods-movuapp/ExpoModulesProvider.swift (in target 'movuapp' from project 'movuapp')
     cd /Users/sefridkapllani/Documents/GitHub/Gym_Sensor_App/ios
     
 
@@ -4964,8 +4965,8 @@ total size is 175899  speedup is 9.28
 ExtractAppIntentsMetadata (in target 'movuapp' from project 'movuapp')
     cd /Users/sefridkapllani/Documents/GitHub/Gym_Sensor_App/ios
     /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name movuapp --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk --xcode-version 17C52 --platform-family iOS --deployment-target 15.1 --bundle-identifier com.didig03.movu --output /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Products/Debug-iphoneos/movuapp.app --target-triple arm64-apple-ios15.1 --binary-file /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Products/Debug-iphoneos/movuapp.app/movuapp --dependency-file /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Intermediates.noindex/movuapp.build/Debug-iphoneos/movuapp.build/Objects-normal/arm64/movuapp_dependency_info.dat --stringsdata-file /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Intermediates.noindex/movuapp.build/Debug-iphoneos/movuapp.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Intermediates.noindex/movuapp.build/Debug-iphoneos/movuapp.build/Objects-normal/arm64/movuapp.SwiftFileList --metadata-file-list /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Intermediates.noindex/movuapp.build/Debug-iphoneos/movuapp.build/movuapp.DependencyMetadataFileList --static-metadata-file-list /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Intermediates.noindex/movuapp.build/Debug-iphoneos/movuapp.build/movuapp.DependencyStaticMetadataFileList --swift-const-vals-list /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Intermediates.noindex/movuapp.build/Debug-iphoneos/movuapp.build/Objects-normal/arm64/movuapp.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
-2026-02-22 14:23:13.108 appintentsmetadataprocessor[97700:63826144] Starting appintentsmetadataprocessor export
-2026-02-22 14:23:13.111 appintentsmetadataprocessor[97700:63826144] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+2026-02-24 01:31:24.368 appintentsmetadataprocessor[68889:65426589] Starting appintentsmetadataprocessor export
+2026-02-24 01:31:24.371 appintentsmetadataprocessor[68889:65426589] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
 
 CodeSign /Users/sefridkapllani/Library/Developer/Xcode/DerivedData/movuapp-befobgleeemrigbxygbqlsdscuuq/Build/Products/Debug-iphoneos/movuapp.app/movuapp.debug.dylib (in target 'movuapp' from project 'movuapp')
     cd /Users/sefridkapllani/Documents/GitHub/Gym_Sensor_App/ios

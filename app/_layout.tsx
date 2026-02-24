@@ -36,18 +36,6 @@ export default function RootLayout() {
     let cancelled = false;
     (async () => {
       const completed = await getOnboardingCompleted();
-      // If onboarding is complete but there's no auth session yet (e.g. user skipped account creation),
-      // create an anonymous session so the app can store workouts under a stable userId.
-      if (completed && supabase) {
-        try {
-          const { data } = await supabase.auth.getUser();
-          if (!data.user) {
-            await supabase.auth.signInAnonymously();
-          }
-        } catch {
-          // non-fatal
-        }
-      }
       if (!cancelled) setOnboardingCompleted(completed);
     })();
     return () => {
